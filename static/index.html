@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Cup 2026 Odds Comparison</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1923;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a2a3a, #0d1b2a);
+            border-bottom: 2px solid #2d4a5e;
+            padding: 20px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .header h1 span { color: #4fc3f7; }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .timestamps {
+            font-size: 12px;
+            color: #8899aa;
+            line-height: 1.6;
+            text-align: right;
+        }
+
+        .refresh-btn {
+            background: #1e3a5f;
+            border: 1px solid #2d4a5e;
+            color: #4fc3f7;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        .refresh-btn:hover { background: #254d7a; }
+        .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .pulse-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            background: #4caf50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px 16px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #8899aa;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-swatch {
+            width: 14px; height: 14px;
+            border-radius: 3px;
+        }
+
+        .date-group { margin-bottom: 28px; }
+
+        .date-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4fc3f7;
+            padding: 10px 16px;
+            background: #1a2a3a;
+            border-radius: 8px 8px 0 0;
+            border: 1px solid #2d4a5e;
+            border-bottom: none;
+        }
+
+        .matches-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #2d4a5e;
+            border-radius: 0 0 8px 8px;
+            overflow: hidden;
+        }
+
+        .matches-table thead { background: #162230; }
+
+        .matches-table th {
+            padding: 8px 10px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #8899aa;
+            text-align: center;
+            border-bottom: 1px solid #2d4a5e;
+        }
+
+        .matches-table th:first-child { text-align: left; }
+
+        .matches-table th.sg-header { color: #81c784; }
+        .matches-table th.pm-header { color: #7986cb; }
+
+        .th-group {
+            text-align: center;
+            padding: 6px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 2px solid;
+        }
+
+        .th-group.sg { color: #81c784; border-color: #4caf50; }
+        .th-group.pm { color: #7986cb; border-color: #5c6bc0; }
+
+        .matches-table colgroup .col-match { width: 30%; }
+        .matches-table colgroup .col-odds { width: 10%; }
+        .matches-table colgroup .col-sep { width: 2px; }
+
+        .matches-table td {
+            padding: 10px;
+            font-size: 14px;
+            border-top: 1px solid #1e2d3d;
+            text-align: center;
+        }
+
+        .matches-table tr:hover { background: #162230; }
+
+        .match-info { text-align: left !important; }
+        .match-name { font-weight: 500; font-size: 13px; }
+        .match-time { font-size: 11px; color: #6b7c8a; margin-top: 2px; }
+
+        .odds-cell {
+            font-weight: 600;
+            font-size: 14px;
+            font-variant-numeric: tabular-nums;
+            min-width: 55px;
+        }
+
+        .sg-cell { color: #a5d6a7; }
+        .pm-cell { color: #9fa8da; }
+
+        .better-value {
+            background: rgba(255, 215, 0, 0.08);
+            position: relative;
+        }
+
+        .better-value::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 20px; height: 2px;
+            background: #ffd740;
+            border-radius: 1px;
+        }
+
+        .odds-sub {
+            font-size: 10px;
+            color: #6b7c8a;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .diff-positive { color: #66bb6a; }
+        .diff-negative { color: #ef5350; }
+
+        .loading {
+            text-align: center;
+            padding: 80px 20px;
+            color: #8899aa;
+        }
+
+        .loading-spinner {
+            width: 40px; height: 40px;
+            border: 3px solid #1e2d3d;
+            border-top-color: #4fc3f7;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .separator {
+            width: 2px;
+            background: #2d4a5e;
+        }
+
+        @media (max-width: 768px) {
+            .header { padding: 16px; }
+            .container { padding: 16px 4px; }
+            .matches-table td, .matches-table th { padding: 6px 4px; font-size: 12px; }
+            .odds-cell { min-width: 40px; font-size: 12px; }
+            .match-name { font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><span>World Cup 2026</span> Odds Comparison</h1>
+        <div class="header-right">
+            <div class="timestamps" id="timestamps">
+                <span class="pulse-dot"></span>Loading...
+            </div>
+            <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">Refresh Now</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-swatch" style="background: #4caf50;"></div>
+                <span>Singapore Pools</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-swatch" style="background: #5c6bc0;"></div>
+                <span>Polymarket</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-swatch" style="background: #ffd740;"></div>
+                <span>Better value (higher payout)</span>
+            </div>
+        </div>
+
+        <div id="content">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading odds from Singapore Pools & Polymarket...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pollInterval;
+
+        async function fetchOdds() {
+            try {
+                const resp = await fetch('/api/odds');
+                if (!resp.ok) {
+                    if (resp.status === 503) {
+                        showLoading('Initial scrape in progress... This takes about 30 seconds.');
+                        return;
+                    }
+                    throw new Error(`HTTP ${resp.status}`);
+                }
+                const data = await resp.json();
+                renderOdds(data);
+                updateTimestamps(data);
+            } catch (err) {
+                document.getElementById('content').innerHTML = `
+                    <div class="loading">
+                        <p style="color:#ef5350;">Failed to load odds: ${err.message}</p>
+                        <p style="margin-top:8px;font-size:13px;color:#8899aa;">Will retry automatically...</p>
+                    </div>`;
+            }
+        }
+
+        function showLoading(msg) {
+            document.getElementById('content').innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>${msg}</p>
+                </div>`;
+        }
+
+        function renderOdds(data) {
+            const matches = data.matches;
+            if (!matches || matches.length === 0) {
+                document.getElementById('content').innerHTML = '<div class="loading"><p>No matches available.</p></div>';
+                return;
+            }
+
+            // Group by date
+            const groups = {};
+            matches.forEach(m => {
+                let dateKey = 'TBD';
+                if (m.date) {
+                    const d = new Date(m.date);
+                    dateKey = d.toLocaleDateString('en-US', {
+                        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                        timeZone: 'Asia/Singapore'
+                    });
+                }
+                if (!groups[dateKey]) groups[dateKey] = [];
+                groups[dateKey].push(m);
+            });
+
+            let html = '';
+            for (const [date, dateMatches] of Object.entries(groups)) {
+                html += `<div class="date-group">`;
+                html += `<div class="date-header">${date}</div>`;
+                html += `<table class="matches-table">
+                    <colgroup>
+                        <col class="col-match">
+                        <col class="col-odds"><col class="col-odds"><col class="col-odds">
+                        <col class="col-sep">
+                        <col class="col-odds"><col class="col-odds"><col class="col-odds">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th colspan="3" class="th-group sg">Singapore Pools</th>
+                            <th></th>
+                            <th colspan="3" class="th-group pm">Polymarket</th>
+                        </tr>
+                        <tr>
+                            <th style="text-align:left;">Match</th>
+                            <th class="sg-header">W</th>
+                            <th class="sg-header">D</th>
+                            <th class="sg-header">L</th>
+                            <th class="separator"></th>
+                            <th class="pm-header">W</th>
+                            <th class="pm-header">D</th>
+                            <th class="pm-header">L</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+                dateMatches.forEach(m => {
+                    const time = m.date ? new Date(m.date).toLocaleTimeString('en-US', {
+                        hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Singapore'
+                    }) : '';
+
+                    // Determine which source offers better value for each outcome
+                    const sgH = parseFloat(m.sg_home) || 0;
+                    const sgD = parseFloat(m.sg_draw) || 0;
+                    const sgA = parseFloat(m.sg_away) || 0;
+                    const pmH = parseFloat(m.pm_home) || 0;
+                    const pmD = parseFloat(m.pm_draw) || 0;
+                    const pmA = parseFloat(m.pm_away) || 0;
+
+                    const betterH = getBetterClass(sgH, pmH);
+                    const betterD = getBetterClass(sgD, pmD);
+                    const betterA = getBetterClass(sgA, pmA);
+
+                    html += `<tr>
+                        <td class="match-info">
+                            <div class="match-name">${m.home_team} vs ${m.away_team}</div>
+                            ${time ? `<div class="match-time">${time} SGT</div>` : ''}
+                        </td>
+                        <td class="odds-cell sg-cell ${betterH === 'sg' ? 'better-value' : ''}">
+                            ${m.sg_home || '-'}
+                            ${sgProbLabel(m.sg_home)}
+                        </td>
+                        <td class="odds-cell sg-cell ${betterD === 'sg' ? 'better-value' : ''}">
+                            ${m.sg_draw || '-'}
+                            ${sgProbLabel(m.sg_draw)}
+                        </td>
+                        <td class="odds-cell sg-cell ${betterA === 'sg' ? 'better-value' : ''}">
+                            ${m.sg_away || '-'}
+                            ${sgProbLabel(m.sg_away)}
+                        </td>
+                        <td class="separator"></td>
+                        <td class="odds-cell pm-cell ${betterH === 'pm' ? 'better-value' : ''}">
+                            ${m.pm_home || '-'}
+                            ${probLabel(m.pm_home_prob)}
+                        </td>
+                        <td class="odds-cell pm-cell ${betterD === 'pm' ? 'better-value' : ''}">
+                            ${m.pm_draw || '-'}
+                            ${probLabel(m.pm_draw_prob)}
+                        </td>
+                        <td class="odds-cell pm-cell ${betterA === 'pm' ? 'better-value' : ''}">
+                            ${m.pm_away || '-'}
+                            ${probLabel(m.pm_away_prob)}
+                        </td>
+                    </tr>`;
+                });
+
+                html += `</tbody></table></div>`;
+            }
+
+            document.getElementById('content').innerHTML = html;
+        }
+
+        function getBetterClass(sg, pm) {
+            if (!sg || !pm) return '';
+            // Higher decimal odds = better value for the bettor
+            if (sg > pm) return 'sg';
+            if (pm > sg) return 'pm';
+            return '';
+        }
+
+        function openingDiff(current, opening) {
+            if (!current || !opening) return '';
+            const curr = parseFloat(current);
+            const open = parseFloat(opening);
+            if (isNaN(curr) || isNaN(open) || Math.abs(curr - open) < 0.01) return '';
+            const diff = curr - open;
+            const arrow = diff > 0 ? '\u25B2' : '\u25BC';
+            const cls = diff > 0 ? 'diff-positive' : 'diff-negative';
+            return `<span class="odds-sub ${cls}">${arrow}${Math.abs(diff).toFixed(2)}</span>`;
+        }
+
+        function sgProbLabel(decimalOdds) {
+            if (!decimalOdds) return '';
+            const odds = parseFloat(decimalOdds);
+            if (isNaN(odds) || odds <= 0) return '';
+            const pct = (100 / odds).toFixed(1);
+            return `<span class="odds-sub">${pct}%</span>`;
+        }
+
+        function probLabel(prob) {
+            if (!prob && prob !== 0) return '';
+            const pct = (prob * 100).toFixed(1);
+            return `<span class="odds-sub">${pct}%</span>`;
+        }
+
+        function updateTimestamps(data) {
+            let html = '<span class="pulse-dot"></span>';
+            if (data.sg_updated) {
+                const d = new Date(data.sg_updated);
+                html += `SG Pools: ${formatTime(d)}<br>`;
+            }
+            if (data.pm_updated) {
+                const d = new Date(data.pm_updated);
+                html += `Polymarket: ${formatTime(d)}`;
+            }
+            document.getElementById('timestamps').innerHTML = html;
+        }
+
+        function formatTime(d) {
+            return d.toLocaleTimeString('en-US', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                timeZone: 'Asia/Singapore'
+            }) + ' SGT';
+        }
+
+        async function manualRefresh() {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            btn.textContent = 'Refreshing...';
+            try {
+                await fetch('/api/refresh', { method: 'POST' });
+                await new Promise(r => setTimeout(r, 35000));
+                await fetchOdds();
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Refresh Now';
+            }
+        }
+
+        // Initial load + poll every 30s
+        fetchOdds();
+        pollInterval = setInterval(fetchOdds, 30000);
+    </script>
+</body>
+</html>
