@@ -13,6 +13,7 @@ from odds_scraper import scrape_odds, load_cached_odds
 from polymarket_scraper import scrape_polymarket_odds, load_cached_polymarket
 
 app = Flask(__name__, static_folder="static")
+_scrape_lock = threading.Lock()
 
 # Team name normalization for matching between sources
 TEAM_ALIASES = {
@@ -49,7 +50,10 @@ def normalize_team(name):
 
 
 def scrape_all():
-    """Run both scrapers."""
+    """Run both scrapers. Skips if another scrape is already running."""
+    if not _scrape_lock.acquire(blocking=False):
+        print("Scrape already in progress, skipping")
+        return
     try:
         scrape_odds()
     except Exception as e:
@@ -58,6 +62,8 @@ def scrape_all():
         scrape_polymarket_odds()
     except Exception as e:
         print(f"Polymarket scrape error: {e}")
+    finally:
+        _scrape_lock.release()
 
 
 def combine_odds():

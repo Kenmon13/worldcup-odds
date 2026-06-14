@@ -472,14 +472,48 @@
             const btn = document.getElementById('refreshBtn');
             btn.disabled = true;
             btn.textContent = 'Refreshing...';
+
+            // Capture current timestamp to detect when new data arrives
+            let currentTs = '';
+            try {
+                const curr = await fetch('/api/odds');
+                if (curr.ok) {
+                    const d = await curr.json();
+                    currentTs = d.sg_updated || '';
+                }
+            } catch {}
+
+            // Trigger the scrape
             try {
                 await fetch('/api/refresh', { method: 'POST' });
-                await new Promise(r => setTimeout(r, 35000));
-                await fetchOdds();
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Refresh Now';
+            } catch {}
+
+            // Poll until new data arrives or timeout after 90s
+            const deadline = Date.now() + 90000;
+            let found = false;
+            while (Date.now() < deadline) {
+                await new Promise(r => setTimeout(r, 5000));
+                try {
+                    const resp = await fetch('/api/odds');
+                    if (resp.ok) {
+                        const d = await resp.json();
+                        if (d.sg_updated && d.sg_updated !== currentTs) {
+                            renderOdds(d);
+                            updateTimestamps(d);
+                            found = true;
+                            break;
+                        }
+                    }
+                    btn.textContent = `Refreshing... ${Math.round((deadline - Date.now()) / 1000)}s`;
+                } catch {}
             }
+
+            if (!found) {
+                await fetchOdds(); // Show whatever we have
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Refresh Now';
         }
 
         // Initial load + poll every 30s
