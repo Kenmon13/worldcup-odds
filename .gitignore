@@ -2,5 +2,6 @@ __pycache__/
 *.pyc
 odds_data.json
 polymarket_data.json
+kalshi_data.json
 *.html
 !static/index.html

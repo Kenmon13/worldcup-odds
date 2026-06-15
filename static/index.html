@@ -77,8 +77,12 @@
             50% { opacity: 0.4; }
         }
 
+        .matches-table th.ka-header { color: #ffb74d; }
+
+        .th-group.ka { color: #ffb74d; border-color: #ff9800; }
+
         .container {
-            max-width: 1100px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 24px 16px;
         }
@@ -155,9 +159,9 @@
         .th-group.sg { color: #81c784; border-color: #4caf50; }
         .th-group.pm { color: #7986cb; border-color: #5c6bc0; }
 
-        .matches-table colgroup .col-match { width: 30%; }
-        .matches-table colgroup .col-odds { width: 10%; }
-        .matches-table colgroup .col-sep { width: 2px; }
+        .matches-table colgroup .col-match { width: 22%; }
+        .matches-table colgroup .col-odds { width: 7.5%; }
+        .matches-table colgroup .col-sep { width: 1px; }
 
         .matches-table td {
             padding: 10px;
@@ -181,19 +185,41 @@
 
         .sg-cell { color: #a5d6a7; }
         .pm-cell { color: #9fa8da; }
+        .ka-cell { color: #ffcc80; }
 
-        .better-value {
-            background: rgba(255, 215, 0, 0.08);
-            position: relative;
-        }
+        .value-better { position: relative; }
 
-        .better-value::after {
+        .value-better::after {
             content: '';
             position: absolute;
             bottom: 0; left: 50%;
             transform: translateX(-50%);
             width: 20px; height: 2px;
-            background: #ffd740;
+            background: #66bb6a;
+            border-radius: 1px;
+        }
+
+        .value-close { position: relative; }
+
+        .value-close::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 20px; height: 2px;
+            background: #fdd835;
+            border-radius: 1px;
+        }
+
+        .value-worse { position: relative; }
+
+        .value-worse::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 20px; height: 2px;
+            background: #ef5350;
             border-radius: 1px;
         }
 
@@ -225,8 +251,8 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         .separator {
-            width: 2px;
-            background: #2d4a5e;
+            width: 1px;
+            background: #1e2d3d;
         }
 
         @media (max-width: 768px) {
@@ -250,6 +276,7 @@
     </div>
 
     <div class="container">
+        <p style="font-size: 12px; color: #6b7c8a; margin-bottom: 16px;">Worse value for Polymarket/Kalshi means better value for Singapore Pools</p>
         <div class="legend">
             <div class="legend-item">
                 <div class="legend-swatch" style="background: #4caf50;"></div>
@@ -260,15 +287,27 @@
                 <span>Polymarket</span>
             </div>
             <div class="legend-item">
-                <div class="legend-swatch" style="background: #ffd740;"></div>
-                <span>Better value (higher payout)</span>
+                <div class="legend-swatch" style="background: #ff9800;"></div>
+                <span>Kalshi</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-swatch" style="background: #66bb6a;"></div>
+                <span>Better value</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-swatch" style="background: #fdd835;"></div>
+                <span>Close (&lt;0.5%)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-swatch" style="background: #ef5350;"></div>
+                <span>Worse value</span>
             </div>
         </div>
 
         <div id="content">
             <div class="loading">
                 <div class="loading-spinner"></div>
-                <p>Loading odds from Singapore Pools & Polymarket...</p>
+                <p>Loading odds from Singapore Pools, Polymarket & Kalshi...</p>
             </div>
         </div>
     </div>
@@ -338,6 +377,8 @@
                         <col class="col-odds"><col class="col-odds"><col class="col-odds">
                         <col class="col-sep">
                         <col class="col-odds"><col class="col-odds"><col class="col-odds">
+                        <col class="col-sep">
+                        <col class="col-odds"><col class="col-odds"><col class="col-odds">
                     </colgroup>
                     <thead>
                         <tr>
@@ -345,6 +386,8 @@
                             <th colspan="3" class="th-group sg">Singapore Pools</th>
                             <th></th>
                             <th colspan="3" class="th-group pm">Polymarket</th>
+                            <th></th>
+                            <th colspan="3" class="th-group ka">Kalshi</th>
                         </tr>
                         <tr>
                             <th style="text-align:left;">Match</th>
@@ -355,6 +398,10 @@
                             <th class="pm-header">W</th>
                             <th class="pm-header">D</th>
                             <th class="pm-header">L</th>
+                            <th class="separator"></th>
+                            <th class="ka-header">W</th>
+                            <th class="ka-header">D</th>
+                            <th class="ka-header">L</th>
                         </tr>
                     </thead>
                     <tbody>`;
@@ -364,47 +411,67 @@
                         hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Singapore'
                     }) : '';
 
-                    // Determine which source offers better value for each outcome
+                    // Parse all odds for value comparison
                     const sgH = parseFloat(m.sg_home) || 0;
                     const sgD = parseFloat(m.sg_draw) || 0;
                     const sgA = parseFloat(m.sg_away) || 0;
                     const pmH = parseFloat(m.pm_home) || 0;
                     const pmD = parseFloat(m.pm_draw) || 0;
                     const pmA = parseFloat(m.pm_away) || 0;
+                    const kaH = parseFloat(m.ka_home) || 0;
+                    const kaD = parseFloat(m.ka_draw) || 0;
+                    const kaA = parseFloat(m.ka_away) || 0;
 
-                    const betterH = getBetterClass(sgH, pmH);
-                    const betterD = getBetterClass(sgD, pmD);
-                    const betterA = getBetterClass(sgA, pmA);
+                    // Compare each source independently vs SG Pools
+                    const pmCmpH = compareToSG(sgH, pmH);
+                    const pmCmpD = compareToSG(sgD, pmD);
+                    const pmCmpA = compareToSG(sgA, pmA);
+                    const kaCmpH = compareToSG(sgH, kaH);
+                    const kaCmpD = compareToSG(sgD, kaD);
+                    const kaCmpA = compareToSG(sgA, kaA);
 
                     html += `<tr>
                         <td class="match-info">
                             <div class="match-name">${m.home_team} vs ${m.away_team}</div>
                             ${time ? `<div class="match-time">${time} SGT</div>` : ''}
                         </td>
-                        <td class="odds-cell sg-cell ${betterH === 'sg' ? 'better-value' : ''}">
+                        <td class="odds-cell sg-cell">
                             ${m.sg_home || '-'}
                             ${sgProbLabel(m.sg_home)}
                         </td>
-                        <td class="odds-cell sg-cell ${betterD === 'sg' ? 'better-value' : ''}">
+                        <td class="odds-cell sg-cell">
                             ${m.sg_draw || '-'}
                             ${sgProbLabel(m.sg_draw)}
                         </td>
-                        <td class="odds-cell sg-cell ${betterA === 'sg' ? 'better-value' : ''}">
+                        <td class="odds-cell sg-cell">
                             ${m.sg_away || '-'}
                             ${sgProbLabel(m.sg_away)}
                         </td>
                         <td class="separator"></td>
-                        <td class="odds-cell pm-cell ${betterH === 'pm' ? 'better-value' : ''}">
+                        <td class="odds-cell pm-cell ${pmCmpH}">
                             ${m.pm_home || '-'}
                             ${probLabel(m.pm_home_prob)}
                         </td>
-                        <td class="odds-cell pm-cell ${betterD === 'pm' ? 'better-value' : ''}">
+                        <td class="odds-cell pm-cell ${pmCmpD}">
                             ${m.pm_draw || '-'}
                             ${probLabel(m.pm_draw_prob)}
                         </td>
-                        <td class="odds-cell pm-cell ${betterA === 'pm' ? 'better-value' : ''}">
+                        <td class="odds-cell pm-cell ${pmCmpA}">
                             ${m.pm_away || '-'}
                             ${probLabel(m.pm_away_prob)}
+                        </td>
+                        <td class="separator"></td>
+                        <td class="odds-cell ka-cell ${kaCmpH}">
+                            ${m.ka_home || '-'}
+                            ${probLabel(m.ka_home_prob)}
+                        </td>
+                        <td class="odds-cell ka-cell ${kaCmpD}">
+                            ${m.ka_draw || '-'}
+                            ${probLabel(m.ka_draw_prob)}
+                        </td>
+                        <td class="odds-cell ka-cell ${kaCmpA}">
+                            ${m.ka_away || '-'}
+                            ${probLabel(m.ka_away_prob)}
                         </td>
                     </tr>`;
                 });
@@ -415,12 +482,16 @@
             document.getElementById('content').innerHTML = html;
         }
 
-        function getBetterClass(sg, pm) {
-            if (!sg || !pm) return '';
-            // Higher decimal odds = better value for the bettor
-            if (sg > pm) return 'sg';
-            if (pm > sg) return 'pm';
-            return '';
+        function compareToSG(sg, other) {
+            // Compare implied probability: lower prob = better value for bettor
+            // Implied prob = 1/decimal_odds, so compare percentages
+            if (!sg || !other) return '';
+            const sgProb = 100 / sg;
+            const otherProb = 100 / other;
+            const diff = sgProb - otherProb; // positive = other is better
+            if (Math.abs(diff) <= 0.5) return 'value-close';
+            if (diff > 0) return 'value-better';
+            return 'value-worse';
         }
 
         function openingDiff(current, opening) {
@@ -456,7 +527,11 @@
             }
             if (data.pm_updated) {
                 const d = new Date(data.pm_updated);
-                html += `Polymarket: ${formatTime(d)}`;
+                html += `Polymarket: ${formatTime(d)}<br>`;
+            }
+            if (data.ka_updated) {
+                const d = new Date(data.ka_updated);
+                html += `Kalshi: ${formatTime(d)}`;
             }
             document.getElementById('timestamps').innerHTML = html;
         }

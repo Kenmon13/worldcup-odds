@@ -11,8 +11,10 @@ from flask import Flask, jsonify, send_from_directory
 from apscheduler.schedulers.background import BackgroundScheduler
 from odds_scraper import scrape_odds, load_cached_odds
 from polymarket_scraper import scrape_polymarket_odds, load_cached_polymarket
+from kalshi_scraper import scrape_kalshi_odds, load_cached_kalshi
 
 app = Flask(__name__, static_folder="static")
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 _scrape_lock = threading.Lock()
 
 # Team name normalization for matching between sources
@@ -31,6 +33,7 @@ TEAM_ALIASES = {
     "south korea": "korea republic",
     "turkey": "türkiye",
     "türkiye": "türkiye",
+    "turkiye": "türkiye",
     "bosnia": "bosnia-herzegovina",
     "bosnia-herzegovina": "bosnia-herzegovina",
     "bosnia and herzegovina": "bosnia-herzegovina",
@@ -62,14 +65,19 @@ def scrape_all():
         scrape_polymarket_odds()
     except Exception as e:
         print(f"Polymarket scrape error: {e}")
+    try:
+        scrape_kalshi_odds()
+    except Exception as e:
+        print(f"Kalshi scrape error: {e}")
     finally:
         _scrape_lock.release()
 
 
 def combine_odds():
-    """Combine SG Pools and Polymarket odds into a single dataset."""
+    """Combine SG Pools, Polymarket, and Kalshi odds into a single dataset."""
     sg_data = load_cached_odds()
     pm_data = load_cached_polymarket()
+    ka_data = load_cached_kalshi()
 
     if not sg_data:
         return None
@@ -83,6 +91,15 @@ def combine_odds():
             key = f"{home_norm}|{away_norm}"
             pm_lookup[key] = match
 
+    # Build lookup from Kalshi data keyed by normalized team pair
+    ka_lookup = {}
+    if ka_data:
+        for match in ka_data.get("matches", []):
+            home_norm = normalize_team(match["home_team"])
+            away_norm = normalize_team(match["away_team"])
+            key = f"{home_norm}|{away_norm}"
+            ka_lookup[key] = match
+
     combined = []
     for match in sg_data.get("matches", []):
         home_norm = normalize_team(match["home_team"])
@@ -90,6 +107,7 @@ def combine_odds():
         key = f"{home_norm}|{away_norm}"
 
         pm_match = pm_lookup.get(key)
+        ka_match = ka_lookup.get(key)
 
         entry = {
             "event": match["event"],
@@ -110,6 +128,13 @@ def combine_odds():
             "pm_home_prob": pm_match["home_prob"] if pm_match else "",
             "pm_draw_prob": pm_match["draw_prob"] if pm_match else "",
             "pm_away_prob": pm_match["away_prob"] if pm_match else "",
+            # Kalshi odds
+            "ka_home": ka_match["home_odds"] if ka_match else "",
+            "ka_draw": ka_match["draw_odds"] if ka_match else "",
+            "ka_away": ka_match["away_odds"] if ka_match else "",
+            "ka_home_prob": ka_match["home_prob"] if ka_match else "",
+            "ka_draw_prob": ka_match["draw_prob"] if ka_match else "",
+            "ka_away_prob": ka_match["away_prob"] if ka_match else "",
         }
         combined.append(entry)
 
@@ -117,6 +142,7 @@ def combine_odds():
         "matches": combined,
         "sg_updated": sg_data.get("last_updated", ""),
         "pm_updated": pm_data.get("last_updated", "") if pm_data else "",
+        "ka_updated": ka_data.get("last_updated", "") if ka_data else "",
     }
 
 
