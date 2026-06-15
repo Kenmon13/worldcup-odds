@@ -53,7 +53,7 @@ def normalize_team(name):
 
 
 def scrape_all():
-    """Run both scrapers. Skips if another scrape is already running."""
+    """Run all scrapers. Skips if another scrape is already running."""
     if not _scrape_lock.acquire(blocking=False):
         print("Scrape already in progress, skipping")
         return
@@ -71,6 +71,18 @@ def scrape_all():
         print(f"Kalshi scrape error: {e}")
     finally:
         _scrape_lock.release()
+
+
+def scrape_fast():
+    """Run Polymarket + Kalshi scrapers only (lightweight API calls)."""
+    try:
+        scrape_polymarket_odds()
+    except Exception as e:
+        print(f"Polymarket scrape error: {e}")
+    try:
+        scrape_kalshi_odds()
+    except Exception as e:
+        print(f"Kalshi scrape error: {e}")
 
 
 def combine_odds():
@@ -169,7 +181,8 @@ def api_refresh():
 
 def start_scheduler():
     scheduler = BackgroundScheduler()
-    scheduler.add_job(scrape_all, "interval", minutes=5, id="odds_scraper")
+    scheduler.add_job(scrape_all, "interval", minutes=5, id="sg_scraper")
+    scheduler.add_job(scrape_fast, "interval", seconds=30, id="fast_scraper")
     scheduler.start()
 
 
