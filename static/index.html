@@ -457,41 +457,41 @@
                             ${time ? `<div class="match-time">${time} SGT</div>` : ''}
                         </td>
                         <td class="odds-cell sg-cell">
-                            ${m.sg_home || '-'}
+                            ${fmtOdds(m.sg_home)}
                             ${sgProbLabel(m.sg_home)}
                         </td>
                         <td class="odds-cell sg-cell">
-                            ${m.sg_draw || '-'}
+                            ${fmtOdds(m.sg_draw)}
                             ${sgProbLabel(m.sg_draw)}
                         </td>
                         <td class="odds-cell sg-cell">
-                            ${m.sg_away || '-'}
+                            ${fmtOdds(m.sg_away)}
                             ${sgProbLabel(m.sg_away)}
                         </td>
                         <td class="separator"></td>
                         <td class="odds-cell pm-cell ${pmCmpH}">
-                            ${m.pm_home || '-'}
+                            ${fmtOdds(m.pm_home)}
                             ${probLabel(m.pm_home_prob)}
                         </td>
                         <td class="odds-cell pm-cell ${pmCmpD}">
-                            ${m.pm_draw || '-'}
+                            ${fmtOdds(m.pm_draw)}
                             ${probLabel(m.pm_draw_prob)}
                         </td>
                         <td class="odds-cell pm-cell ${pmCmpA}">
-                            ${m.pm_away || '-'}
+                            ${fmtOdds(m.pm_away)}
                             ${probLabel(m.pm_away_prob)}
                         </td>
                         <td class="separator"></td>
                         <td class="odds-cell ka-cell ${kaCmpH}">
-                            ${m.ka_home || '-'}
+                            ${fmtOdds(m.ka_home)}
                             ${probLabel(m.ka_home_prob)}
                         </td>
                         <td class="odds-cell ka-cell ${kaCmpD}">
-                            ${m.ka_draw || '-'}
+                            ${fmtOdds(m.ka_draw)}
                             ${probLabel(m.ka_draw_prob)}
                         </td>
                         <td class="odds-cell ka-cell ${kaCmpA}">
-                            ${m.ka_away || '-'}
+                            ${fmtOdds(m.ka_away)}
                             ${probLabel(m.ka_away_prob)}
                         </td>
                     </tr>`;
@@ -501,6 +501,16 @@
             }
 
             document.getElementById('content').innerHTML = html;
+        }
+
+        function fmtOdds(v) {
+            if (!v && v !== 0) return '-';
+            // On mobile, round to 1 decimal place to save horizontal space
+            if (window.matchMedia('(max-width: 768px)').matches) {
+                const n = parseFloat(v);
+                if (!isNaN(n)) return n.toFixed(1);
+            }
+            return v;
         }
 
         function compareToSG(sg, other) {
