@@ -260,20 +260,27 @@
         @media (max-width: 768px) {
             .header { padding: 16px; }
             .container { padding: 16px 4px; }
-            /* Let the wide table scroll horizontally instead of being crushed */
-            .table-scroll {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
+
+            /* Fit all columns to the viewport without horizontal scroll */
             .matches-table {
-                min-width: 620px;
-                border-radius: 0;
+                table-layout: fixed;
+                border-radius: 0 0 8px 8px;
             }
-            .matches-table td, .matches-table th { padding: 7px 5px; font-size: 12px; }
-            .odds-cell { min-width: 44px; font-size: 12px; }
-            .match-name { font-size: 12px; }
-            .match-info { min-width: 110px; }
-            .th-group { font-size: 10px; letter-spacing: 0.5px; }
+            /* Fixed widths: match column + 9 odds columns + 2 thin separators */
+            .matches-table colgroup .col-match { width: 19%; }
+            .matches-table colgroup .col-odds { width: 8.9%; }
+            .matches-table colgroup .col-sep { width: 1px; }
+
+            .matches-table td, .matches-table th { padding: 6px 1px; }
+            .matches-table th { font-size: 9px; }
+            .th-group { font-size: 8px; letter-spacing: 0; padding: 5px 1px; }
+
+            .odds-cell { min-width: 0; font-size: 11px; }
+            .odds-sub { font-size: 9px; margin-top: 1px; }
+
+            .match-info { padding-left: 6px !important; }
+            .match-name { font-size: 11px; line-height: 1.2; }
+            .match-time { font-size: 9px; }
         }
     </style>
 </head>
