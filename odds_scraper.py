@@ -35,15 +35,10 @@ def scrape_odds():
         hierarchy = _fetch_api(page, HIERARCHY_URL, token)
 
         # Extract World Cup match events (not outrights like "Group Winner")
-        # Debug: print all league names to find the right filter
-        for country in hierarchy.get("football", []):
-            for league in country.get("leagues", []):
-                print(f"  LEAGUE: {league.get('name', '')}")
-
         wc_matches = []
         for country in hierarchy.get("football", []):
             for league in country.get("leagues", []):
-                if "world" in league.get("name", "").lower():
+                if "cup" in league.get("name", "").lower():
                     for event in league.get("eventIdSet", []):
                         name = event["name"]
                         # Filter to actual matches (contains "vs")

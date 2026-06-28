@@ -149,7 +149,9 @@ def combine_odds():
             "ka_draw_prob": ka_match["draw_prob"] if ka_match else "",
             "ka_away_prob": ka_match["away_prob"] if ka_match else "",
         }
-        combined.append(entry)
+        # Only include matches listed on Polymarket or Kalshi (filters out non-WC cup matches)
+        if pm_match or ka_match:
+            combined.append(entry)
 
     return {
         "matches": combined,
