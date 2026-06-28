@@ -102,6 +102,9 @@ def _parse_match_group(event_ticker, markets):
         except (ValueError, TypeError):
             price = 0.0
 
+        # Strip "Reg Time: " prefix from yes_sub_title
+        subtitle = re.sub(r'^Reg Time:\s*', '', subtitle, flags=re.IGNORECASE).strip()
+
         if ticker.endswith("-TIE") or subtitle.lower() == "tie":
             draw_prob = price
         else:
