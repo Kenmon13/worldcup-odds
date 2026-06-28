@@ -23,28 +23,44 @@ def scrape_polymarket_odds():
     import sys as _sys
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Fetching Polymarket odds...", file=_sys.stderr)
 
-    resp = requests.get(
-        f"{GAMMA_API}/events",
-        params={
-            "tag_slug": "fifa-world-cup",
-            "limit": 100,
-            "active": True,
-            "closed": False,
-        },
-        timeout=15,
-    )
-    resp.raise_for_status()
-    events = resp.json()
+    # Fetch all WC events (active=True covers both open and recently closed match markets)
+    all_events = []
+    offset = 0
+    while True:
+        resp = requests.get(
+            f"{GAMMA_API}/events",
+            params={"tag_slug": "fifa-world-cup", "limit": 100, "active": True, "offset": offset},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        batch = resp.json()
+        if not batch:
+            break
+        all_events.extend(batch)
+        if len(batch) < 100:
+            break
+        offset += 100
+
+    now = datetime.now(timezone.utc)
 
     matches = []
-    for event in events:
+    for event in all_events:
         title = event.get("title", "")
-        if " vs" not in title:
+        if " vs" not in title and "–" not in title:
             continue
-        # Skip halftime/special/exact-score markets - we only want full-time result
+        # Skip player props and specials
         title_lower = title.lower()
-        if any(kw in title_lower for kw in ["halftime", "half time", "exact score", "total goals"]):
+        if any(kw in title_lower for kw in ["player props", "halftime", "half time", "exact score", "total goals"]):
             continue
+        # Skip already-resolved matches (end date in the past by more than 3 hours)
+        end_date_str = event.get("endDate", "")
+        if end_date_str:
+            try:
+                end_date = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
+                if end_date < now - __import__('datetime').timedelta(hours=3):
+                    continue
+            except Exception:
+                pass
 
         parsed = _parse_match_event(event)
         if parsed:
@@ -76,10 +92,12 @@ def _parse_match_event(event):
     end_date = event.get("endDate", "")
     markets = event.get("markets", [])
 
-    # Split title into home/away teams
+    # Split title into home/away teams (handle "vs.", "vs", and en-dash "–")
     parts = title.split(" vs. ")
     if len(parts) != 2:
         parts = title.split(" vs ")
+    if len(parts) != 2:
+        parts = title.split(" – ")
     if len(parts) != 2:
         return None
 
