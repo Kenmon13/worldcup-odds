@@ -255,91 +255,17 @@
             background: #1e2d3d;
         }
 
-        /* Mobile card layout */
-        .mobile-cards { display: none; }
-
-        .match-card {
-            background: #162230;
-            border: 1px solid #2d4a5e;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            overflow: hidden;
-        }
-
-        .match-card-header {
-            padding: 10px 14px;
-            background: #1a2a3a;
-            border-bottom: 1px solid #2d4a5e;
-        }
-
-        .match-card-name {
-            font-weight: 600;
-            font-size: 13px;
-            color: #e0e0e0;
-        }
-
-        .match-card-time {
-            font-size: 11px;
-            color: #6b7c8a;
-            margin-top: 2px;
-        }
-
-        .match-card-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .match-card-table th {
-            padding: 6px 10px;
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: #8899aa;
-            text-align: center;
-            background: #111d2a;
-            border-bottom: 1px solid #2d4a5e;
-        }
-
-        .match-card-table th:first-child { text-align: left; width: 80px; }
-
-        .match-card-table td {
-            padding: 8px 10px;
-            font-size: 13px;
-            font-weight: 600;
-            text-align: center;
-            border-top: 1px solid #1e2d3d;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .match-card-table td:first-child {
-            text-align: left;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            width: 80px;
-        }
-
-        .match-card-table .row-sg td:first-child { color: #81c784; }
-        .match-card-table .row-sg td { color: #a5d6a7; }
-        .match-card-table .row-pm td:first-child { color: #7986cb; }
-        .match-card-table .row-pm td { color: #9fa8da; }
-        .match-card-table .row-ka td:first-child { color: #ffb74d; }
-        .match-card-table .row-ka td { color: #ffcc80; }
-
-        .match-card-table td .odds-sub {
-            display: block;
-            font-size: 10px;
-            color: #6b7c8a;
-            font-weight: 400;
-            margin-top: 1px;
-        }
-
         @media (max-width: 768px) {
             .header { padding: 16px; }
-            .container { padding: 16px 8px; }
-            .desktop-table { display: none; }
-            .mobile-cards { display: block; }
+            .container { padding: 16px 4px; }
+            .matches-table td, .matches-table th { padding: 5px 3px; font-size: 11px; }
+            .odds-cell { min-width: 36px; font-size: 11px; }
+            .match-name { font-size: 11px; }
+            .match-info { max-width: 90px; }
+            .odds-sub { display: none; }
+            .separator { display: none; }
+            .col-sep { display: none; }
+            .th-group { font-size: 9px; letter-spacing: 0; padding: 4px 2px; }
         }
     </style>
 </head>
@@ -451,8 +377,7 @@
                 html += `<div class="date-group">`;
                 html += `<div class="date-header">${date}</div>`;
 
-                // Desktop table
-                html += `<div class="desktop-table"><table class="matches-table">
+                html += `<table class="matches-table">
                     <colgroup>
                         <col class="col-match">
                         <col class="col-odds"><col class="col-odds"><col class="col-odds">
@@ -557,55 +482,7 @@
                     </tr>`;
                 });
 
-                html += `</tbody></table></div>`; // end desktop-table
-
-                // Mobile cards
-                html += `<div class="mobile-cards">`;
-                dateMatches.forEach(m => {
-                    const time = m.date ? new Date(m.date).toLocaleTimeString('en-US', {
-                        hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Singapore'
-                    }) : '';
-                    const sgH = parseFloat(m.sg_home)||0, sgD = parseFloat(m.sg_draw)||0, sgA = parseFloat(m.sg_away)||0;
-                    const pmH = parseFloat(m.pm_home)||0, pmD = parseFloat(m.pm_draw)||0, pmA = parseFloat(m.pm_away)||0;
-                    const kaH = parseFloat(m.ka_home)||0, kaD = parseFloat(m.ka_draw)||0, kaA = parseFloat(m.ka_away)||0;
-                    const pmCmpH=compareToSG(sgH,pmH), pmCmpD=compareToSG(sgD,pmD), pmCmpA=compareToSG(sgA,pmA);
-                    const kaCmpH=compareToSG(sgH,kaH), kaCmpD=compareToSG(sgD,kaD), kaCmpA=compareToSG(sgA,kaA);
-                    html += `<div class="match-card">
-                        <div class="match-card-header">
-                            <div class="match-card-name">${m.home_team} vs ${m.away_team}</div>
-                            ${time ? `<div class="match-card-time">${time} SGT</div>` : ''}
-                        </div>
-                        <table class="match-card-table">
-                            <thead><tr>
-                                <th></th>
-                                <th>W</th><th>D</th><th>L</th>
-                            </tr></thead>
-                            <tbody>
-                                <tr class="row-sg">
-                                    <td>SG Pools</td>
-                                    <td>${m.sg_home||'-'}${sgProbLabel(m.sg_home)}</td>
-                                    <td>${m.sg_draw||'-'}${sgProbLabel(m.sg_draw)}</td>
-                                    <td>${m.sg_away||'-'}${sgProbLabel(m.sg_away)}</td>
-                                </tr>
-                                <tr class="row-ka">
-                                    <td>Kalshi</td>
-                                    <td class="${kaCmpH}">${m.ka_home||'-'}${probLabel(m.ka_home_prob)}</td>
-                                    <td class="${kaCmpD}">${m.ka_draw||'-'}${probLabel(m.ka_draw_prob)}</td>
-                                    <td class="${kaCmpA}">${m.ka_away||'-'}${probLabel(m.ka_away_prob)}</td>
-                                </tr>
-                                <tr class="row-pm">
-                                    <td>PM</td>
-                                    <td class="${pmCmpH}">${m.pm_home||'-'}${probLabel(m.pm_home_prob)}</td>
-                                    <td class="${pmCmpD}">${m.pm_draw||'-'}${probLabel(m.pm_draw_prob)}</td>
-                                    <td class="${pmCmpA}">${m.pm_away||'-'}${probLabel(m.pm_away_prob)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>`;
-                });
-                html += `</div>`; // end mobile-cards
-
-                html += `</div>`; // end date-group
+                html += `</tbody></table></div>`;
             }
 
             document.getElementById('content').innerHTML = html;
