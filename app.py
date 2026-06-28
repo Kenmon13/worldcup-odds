@@ -118,8 +118,9 @@ def combine_odds():
         away_norm = normalize_team(match["away_team"])
         key = f"{home_norm}|{away_norm}"
 
-        pm_match = pm_lookup.get(key)
-        ka_match = ka_lookup.get(key)
+        reversed_key = f"{away_norm}|{home_norm}"
+        pm_match = pm_lookup.get(key) or pm_lookup.get(reversed_key)
+        ka_match = ka_lookup.get(key) or ka_lookup.get(reversed_key)
 
         entry = {
             "event": match["event"],
