@@ -38,7 +38,7 @@ def scrape_odds():
         wc_matches = []
         for country in hierarchy.get("football", []):
             for league in country.get("leagues", []):
-                if "world cup" in league.get("name", "").lower():
+                if "world" in league.get("name", "").lower():
                     for event in league.get("eventIdSet", []):
                         name = event["name"]
                         # Filter to actual matches (contains "vs")
