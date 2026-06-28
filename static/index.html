@@ -255,17 +255,25 @@
             background: #1e2d3d;
         }
 
+        .table-scroll { width: 100%; }
+
         @media (max-width: 768px) {
             .header { padding: 16px; }
             .container { padding: 16px 4px; }
-            .matches-table td, .matches-table th { padding: 5px 3px; font-size: 11px; }
-            .odds-cell { min-width: 36px; font-size: 11px; }
-            .match-name { font-size: 11px; }
-            .match-info { max-width: 90px; }
-            .odds-sub { display: none; }
-            .separator { display: none; }
-            .col-sep { display: none; }
-            .th-group { font-size: 9px; letter-spacing: 0; padding: 4px 2px; }
+            /* Let the wide table scroll horizontally instead of being crushed */
+            .table-scroll {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .matches-table {
+                min-width: 620px;
+                border-radius: 0;
+            }
+            .matches-table td, .matches-table th { padding: 7px 5px; font-size: 12px; }
+            .odds-cell { min-width: 44px; font-size: 12px; }
+            .match-name { font-size: 12px; }
+            .match-info { min-width: 110px; }
+            .th-group { font-size: 10px; letter-spacing: 0.5px; }
         }
     </style>
 </head>
@@ -377,7 +385,7 @@
                 html += `<div class="date-group">`;
                 html += `<div class="date-header">${date}</div>`;
 
-                html += `<table class="matches-table">
+                html += `<div class="table-scroll"><table class="matches-table">
                     <colgroup>
                         <col class="col-match">
                         <col class="col-odds"><col class="col-odds"><col class="col-odds">
@@ -482,7 +490,7 @@
                     </tr>`;
                 });
 
-                html += `</tbody></table></div>`;
+                html += `</tbody></table></div></div>`;
             }
 
             document.getElementById('content').innerHTML = html;
