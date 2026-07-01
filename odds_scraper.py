@@ -26,43 +26,47 @@ def scrape_odds():
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        try:
+            page = browser.new_page()
+            # Cap every Playwright action (goto, evaluate, etc.) so a single
+            # unresponsive step can't stall the scrape forever.
+            page.set_default_timeout(30000)
 
-        # Authenticate
-        token = _get_auth_token(page)
+            # Authenticate
+            token = _get_auth_token(page)
 
-        # Get event hierarchy
-        hierarchy = _fetch_api(page, HIERARCHY_URL, token)
+            # Get event hierarchy
+            hierarchy = _fetch_api(page, HIERARCHY_URL, token)
 
-        # Extract World Cup match events (not outrights like "Group Winner")
-        wc_matches = []
-        for country in hierarchy.get("football", []):
-            for league in country.get("leagues", []):
-                if "cup" in league.get("name", "").lower():
-                    for event in league.get("eventIdSet", []):
-                        name = event["name"]
-                        # Filter to actual matches (contains "vs")
-                        if " vs " in name:
-                            wc_matches.append(event)
+            # Extract World Cup match events (not outrights like "Group Winner")
+            wc_matches = []
+            for country in hierarchy.get("football", []):
+                for league in country.get("leagues", []):
+                    if "cup" in league.get("name", "").lower():
+                        for event in league.get("eventIdSet", []):
+                            name = event["name"]
+                            # Filter to actual matches (contains "vs")
+                            if " vs " in name:
+                                wc_matches.append(event)
 
-        print(f"  Found {len(wc_matches)} World Cup matches")
+            print(f"  Found {len(wc_matches)} World Cup matches")
 
-        # Fetch odds for each match
-        matches = []
-        for i, event in enumerate(wc_matches):
-            try:
-                odds_data = _fetch_api(
-                    page,
-                    ODDS_URL_TEMPLATE.format(event_id=event["id"]),
-                    token,
-                )
-                parsed = _parse_match_odds(odds_data)
-                if parsed:
-                    matches.append(parsed)
-            except Exception as e:
-                print(f"  Error fetching {event['name']}: {e}")
-
-        browser.close()
+            # Fetch odds for each match
+            matches = []
+            for i, event in enumerate(wc_matches):
+                try:
+                    odds_data = _fetch_api(
+                        page,
+                        ODDS_URL_TEMPLATE.format(event_id=event["id"]),
+                        token,
+                    )
+                    parsed = _parse_match_odds(odds_data)
+                    if parsed:
+                        matches.append(parsed)
+                except Exception as e:
+                    print(f"  Error fetching {event['name']}: {e}")
+        finally:
+            browser.close()
 
     result = {
         "matches": sorted(matches, key=lambda m: m.get("date", "")),
@@ -98,8 +102,15 @@ def _get_auth_token(page):
                 pass
 
     page.on("response", on_response)
-    page.goto(f"{BASE_URL}/en/sports/opening-odds", wait_until="networkidle", timeout=30000)
-    page.wait_for_timeout(3000)
+    # domcontentloaded is bounded and reliable; "networkidle" can stall on
+    # sites that keep long-lived connections open (never going idle).
+    page.goto(f"{BASE_URL}/en/sports/opening-odds", wait_until="domcontentloaded", timeout=30000)
+
+    # Poll for the token instead of a blind fixed wait.
+    for _ in range(30):
+        if token["value"]:
+            break
+        page.wait_for_timeout(500)
 
     if not token["value"]:
         raise RuntimeError("Failed to capture auth token")
@@ -107,17 +118,28 @@ def _get_auth_token(page):
     return token["value"]
 
 
-def _fetch_api(page, url, token):
-    """Call an API endpoint using the browser context with the JWT token."""
+def _fetch_api(page, url, token, timeout_ms=15000):
+    """Call an API endpoint using the browser context with the JWT token.
+
+    Uses an AbortController so a stalled request fails fast instead of
+    hanging page.evaluate (and the whole scrape) indefinitely.
+    """
     return page.evaluate("""
-        async ([url, token]) => {
-            const resp = await fetch(url, {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            return await resp.json();
+        async ([url, token, timeoutMs]) => {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const resp = await fetch(url, {
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    signal: controller.signal
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                return await resp.json();
+            } finally {
+                clearTimeout(timer);
+            }
         }
-    """, [url, token])
+    """, [url, token, timeout_ms])
 
 
 def _parse_match_odds(odds_data):

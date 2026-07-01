@@ -7,6 +7,7 @@ Flask web server for World Cup odds comparison.
 """
 
 import threading
+import time
 from flask import Flask, jsonify, send_from_directory
 from apscheduler.schedulers.background import BackgroundScheduler
 from odds_scraper import scrape_odds, load_cached_odds
@@ -15,7 +16,16 @@ from kalshi_scraper import scrape_kalshi_odds, load_cached_kalshi
 
 app = Flask(__name__, static_folder="static")
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-_scrape_lock = threading.Lock()
+
+# Guards against overlapping scrapes. Instead of a plain lock (which would stay
+# held forever if a scrape ever hung), we track when the current scrape started.
+# If it has been running far longer than any scrape should take, we assume that
+# thread is stuck and let a fresh scrape proceed anyway — so SG Pools keeps
+# updating instead of freezing permanently.
+_scrape_guard = threading.Lock()
+_scrape_in_progress = False
+_scrape_started_at = 0.0
+STALE_SCRAPE_SECONDS = 600  # 10 min; a healthy scrape finishes in well under a minute
 
 # Team name normalization for matching between sources
 TEAM_ALIASES = {
@@ -53,24 +63,34 @@ def normalize_team(name):
 
 
 def scrape_all():
-    """Run all scrapers. Skips if another scrape is already running."""
-    if not _scrape_lock.acquire(blocking=False):
-        print("Scrape already in progress, skipping")
-        return
+    """Run all scrapers. Skips if another scrape is already running, unless the
+    running one appears stuck (see STALE_SCRAPE_SECONDS)."""
+    global _scrape_in_progress, _scrape_started_at
+    with _scrape_guard:
+        if _scrape_in_progress and (time.time() - _scrape_started_at) < STALE_SCRAPE_SECONDS:
+            print("Scrape already in progress, skipping")
+            return
+        if _scrape_in_progress:
+            print("Previous scrape appears stuck; starting a new one anyway")
+        _scrape_in_progress = True
+        _scrape_started_at = time.time()
+
     try:
-        scrape_odds()
-    except Exception as e:
-        print(f"SG Pools scrape error: {e}")
-    try:
-        scrape_polymarket_odds()
-    except Exception as e:
-        print(f"Polymarket scrape error: {e}")
-    try:
-        scrape_kalshi_odds()
-    except Exception as e:
-        print(f"Kalshi scrape error: {e}")
+        try:
+            scrape_odds()
+        except Exception as e:
+            print(f"SG Pools scrape error: {e}")
+        try:
+            scrape_polymarket_odds()
+        except Exception as e:
+            print(f"Polymarket scrape error: {e}")
+        try:
+            scrape_kalshi_odds()
+        except Exception as e:
+            print(f"Kalshi scrape error: {e}")
     finally:
-        _scrape_lock.release()
+        with _scrape_guard:
+            _scrape_in_progress = False
 
 
 def scrape_fast():
