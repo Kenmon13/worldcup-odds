@@ -554,7 +554,11 @@
             let html = '<span class="pulse-dot"></span>';
             if (data.sg_updated) {
                 const d = new Date(data.sg_updated);
-                html += `SG Pools: ${formatTime(d)}<br>`;
+                // SG Pools only updates on a successful 5-min scrape; flag it if
+                // the timestamp has fallen well behind (scrape likely failing).
+                const stale = (Date.now() - d.getTime()) > 20 * 60 * 1000;
+                const staleTag = stale ? ' <span style="color:#ef5350;font-weight:600;">(stale)</span>' : '';
+                html += `SG Pools: ${formatTime(d)}${staleTag}<br>`;
             }
             if (data.pm_updated) {
                 const d = new Date(data.pm_updated);
@@ -568,7 +572,8 @@
         }
 
         function formatTime(d) {
-            return d.toLocaleTimeString('en-US', {
+            return d.toLocaleString('en-US', {
+                month: 'short', day: 'numeric',
                 hour: '2-digit', minute: '2-digit', second: '2-digit',
                 timeZone: 'Asia/Singapore'
             }) + ' SGT';

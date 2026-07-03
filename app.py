@@ -6,11 +6,15 @@ Flask web server for World Cup odds comparison.
 - Runs both scrapers every 5 minutes in the background
 """
 
+import os
+import signal
+import subprocess
+import sys
 import threading
 import time
 from flask import Flask, jsonify, send_from_directory
 from apscheduler.schedulers.background import BackgroundScheduler
-from odds_scraper import scrape_odds, load_cached_odds
+from odds_scraper import load_cached_odds
 from polymarket_scraper import scrape_polymarket_odds, load_cached_polymarket
 from kalshi_scraper import scrape_kalshi_odds, load_cached_kalshi
 
@@ -26,6 +30,33 @@ _scrape_guard = threading.Lock()
 _scrape_in_progress = False
 _scrape_started_at = 0.0
 STALE_SCRAPE_SECONDS = 600  # 10 min; a healthy scrape finishes in well under a minute
+
+# The SG Pools scrape drives a headless Chromium via Playwright, which can hang
+# in places the page-level timeouts don't cover (browser launch, teardown). If
+# that happens in-process, the scrape_all thread never returns and APScheduler's
+# max_instances=1 permanently skips every future run ("maximum number of running
+# instances reached"). Running it in a killable subprocess with a hard
+# wall-clock cap guarantees scrape_all always returns and reaps a stuck Chromium.
+SCRAPE_ODDS_TIMEOUT = 180  # seconds; a healthy SG Pools scrape finishes in ~30-60s
+_APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _run_sg_scrape():
+    """Run the SG Pools scrape in a subprocess bounded by a hard timeout."""
+    proc = subprocess.Popen(
+        [sys.executable, "-c", "from odds_scraper import scrape_odds; scrape_odds()"],
+        cwd=_APP_DIR,
+        start_new_session=True,  # own process group so we can kill Chromium children
+    )
+    try:
+        proc.wait(timeout=SCRAPE_ODDS_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        print(f"SG Pools scrape exceeded {SCRAPE_ODDS_TIMEOUT}s; killing subprocess tree")
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.wait()
 
 # Team name normalization for matching between sources
 TEAM_ALIASES = {
@@ -77,7 +108,7 @@ def scrape_all():
 
     try:
         try:
-            scrape_odds()
+            _run_sg_scrape()
         except Exception as e:
             print(f"SG Pools scrape error: {e}")
         try:
@@ -210,8 +241,6 @@ def start_scheduler():
 
 
 if __name__ == "__main__":
-    import os
-
     print("Running initial scrape...")
     scrape_all()
 
