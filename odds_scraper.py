@@ -25,15 +25,13 @@ def scrape_odds():
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Starting odds scrape...")
 
     with sync_playwright() as p:
-        # Memory-lean flags: --single-process collapses Chromium's browser +
-        # renderer + GPU processes into one (the biggest RAM saver); the rest cut
-        # shared-memory and GPU overhead. Safe here because the scrape is short,
-        # runs in a killable subprocess, and is time-capped by the caller.
+        # Memory-lean flags that cut shared-memory and GPU overhead without
+        # destabilising navigation. (--single-process saves the most RAM but
+        # hangs Page.goto in this containerised headless Chromium, so it's out.)
         browser = p.chromium.launch(headless=True, args=[
             "--no-sandbox",
             "--disable-dev-shm-usage",
             "--disable-gpu",
-            "--single-process",
         ])
         try:
             page = browser.new_page()
