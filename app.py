@@ -236,7 +236,7 @@ def api_refresh():
 def start_scheduler():
     scheduler = BackgroundScheduler()
     scheduler.add_job(scrape_all, "interval", minutes=5, id="sg_scraper")
-    scheduler.add_job(scrape_fast, "interval", seconds=30, id="fast_scraper")
+    scheduler.add_job(scrape_fast, "interval", seconds=60, id="fast_scraper")
     scheduler.start()
 
 

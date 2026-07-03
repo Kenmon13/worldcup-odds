@@ -25,12 +25,33 @@ def scrape_odds():
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Starting odds scrape...")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        # Memory-lean flags: --single-process collapses Chromium's browser +
+        # renderer + GPU processes into one (the biggest RAM saver); the rest cut
+        # shared-memory and GPU overhead. Safe here because the scrape is short,
+        # runs in a killable subprocess, and is time-capped by the caller.
+        browser = p.chromium.launch(headless=True, args=[
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--single-process",
+        ])
         try:
             page = browser.new_page()
             # Cap every Playwright action (goto, evaluate, etc.) so a single
             # unresponsive step can't stall the scrape forever.
             page.set_default_timeout(30000)
+
+            # We only need the auth token (minted by the page's JS) and JSON from
+            # the API, never rendered assets. Aborting images/fonts/media/CSS cuts
+            # memory and bandwidth on load. Scripts/documents are left alone so the
+            # MobileFirst SDK can still run and produce the token.
+            _BLOCKED_RESOURCES = {"image", "font", "media", "stylesheet"}
+            page.route(
+                "**/*",
+                lambda route: route.abort()
+                if route.request.resource_type in _BLOCKED_RESOURCES
+                else route.continue_(),
+            )
 
             # Authenticate
             token = _get_auth_token(page)
