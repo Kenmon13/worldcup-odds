@@ -520,9 +520,12 @@
             const sgProb = 100 / sg;
             const otherProb = 100 / other;
             const diff = sgProb - otherProb; // positive = other is better
-            if (Math.abs(diff) <= 0.5) return 'value-close';
-            if (diff > 0) return 'value-better';
-            return 'value-worse';
+            // Any time the other book's odds are lower than SG Pools (worse value),
+            // flag red — even by a hair. The 0.5% "close" band only softens odds
+            // that are negligibly *better*.
+            if (diff < 0) return 'value-worse';
+            if (diff <= 0.5) return 'value-close';
+            return 'value-better';
         }
 
         function openingDiff(current, opening) {
