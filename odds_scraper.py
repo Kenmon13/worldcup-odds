@@ -17,6 +17,38 @@ ODDS_URL_TEMPLATE = f"{BASE_URL}/mfp/api/adapters/spplMfpApi/event/opening-odds/
 DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "odds_data.json")
 
 
+def _launch_browser(p, attempts=3):
+    """
+    Launch headless Chromium, retrying on failure.
+
+    In the Railway container Chromium intermittently dies at launch (SIGTRAP,
+    typically transient memory pressure), which surfaces as a TargetClosedError.
+    Because last_updated is only written on full success, a single unretried
+    launch crash freezes the SG feed until the next redeploy. Retrying the launch
+    a few times with backoff turns that multi-day outage into a blip.
+
+    Memory-lean flags cut shared-memory and GPU overhead without destabilising
+    navigation. (--single-process saves the most RAM but hangs Page.goto in this
+    containerised headless Chromium, so it's out.)
+    """
+    last_err = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return p.chromium.launch(headless=True, args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+            ])
+        except Exception as e:
+            last_err = e
+            print(f"  Chromium launch failed (attempt {attempt}/{attempts}): {e}")
+            if attempt < attempts:
+                time.sleep(2 * attempt)
+    raise RuntimeError(
+        f"Chromium failed to launch after {attempts} attempts: {last_err}"
+    )
+
+
 def scrape_odds():
     """
     Scrape all World Cup 1X2 odds from Singapore Pools.
@@ -25,14 +57,7 @@ def scrape_odds():
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Starting odds scrape...")
 
     with sync_playwright() as p:
-        # Memory-lean flags that cut shared-memory and GPU overhead without
-        # destabilising navigation. (--single-process saves the most RAM but
-        # hangs Page.goto in this containerised headless Chromium, so it's out.)
-        browser = p.chromium.launch(headless=True, args=[
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-        ])
+        browser = _launch_browser(p)
         try:
             page = browser.new_page()
             # Cap every Playwright action (goto, evaluate, etc.) so a single
